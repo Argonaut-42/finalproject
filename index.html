@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style> 
+    .btn{border:1px solid black; padding:5px; display:inline-block}
+    .chart-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 40vh;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>PA Vehicle Crash Data</h1>
+    <p>Description: Crash data reported to the Pennsylvania Department of Transportation. Includes data involving drivers, passengers, and motor vehicles for researching highway safety. This data can be used to investigate traffic crashes, fatalities and injuries statewide and in specific counties or municipalities.</p>
+    <button id="refreshButton" class="btn btn-primary">Refresh</button> 
+    <br><br>
+    <p>The bar chart below is used to see if there are any trends in the number of vehicle crashes in correlation with the day of the week.</p>
+  </div>
+  <div class="chart-container">
+    <canvas id="myBarChart"></canvas>
+  </div>
+  <div class="container">
+    <br>
+    <p>The pie chart below shows the number of vehicle crashes between day and night.</p>
+  </div>
+  <div class="chart-container">
+    <canvas id="myPieChart"></canvas>
+  </div>
+</body>
+<script>
+"use strict";
+let chart = null;
+let pieChart = null;
+const ctx = document.getElementById('myBarChart');
+const refreshButton = document.getElementById('refreshButton');
+
+// Function to get the data for the bar chart
+const getDataAndDrawBarChart = function() {
+  $.getJSON("https://data.pa.gov/resource/dc5b-gebx.json", function(result) {
+  // Extract the number of crashes by day of week from the API result
+    const data = result.reduce((acc, curr) => {
+      const dayOfWeek = curr.day_of_week;
+      if (!acc[dayOfWeek]) {
+        acc[dayOfWeek] = 0;
+      }
+      acc[dayOfWeek]++;
+      return acc;
+    }, {});
+    // Create an array of the number of crashes by day of week
+    const dataArray = Object.values(data);
+    // Destroy the previous chart instance if it exists
+    if (chart) {
+      chart.destroy();
+    }
+    // Create the chart
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+          datasets: [{
+            label: '# of Vehicle Crashes',
+            data: dataArray,
+            borderWidth: 1
+          }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  });
+};
+
+// Function to get the data for the pie chart
+const getDataAndDrawPieChart = function() {
+  $.getJSON("https://api.covidtracking.com/v1/us/current.json", function(result) {
+    const data = result[0];
+    const dayData = {
+      'Day': data['positiveIncrease'],
+      'Night': data['negativeIncrease']
+    };
+    // Destroy the previous chart instance if it exists
+    if (pieChart) {
+      pieChart.destroy();
+    }
+    // Create the pie chart
+    pieChart = new Chart(document.getElementById('myPieChart'), {
+      type: 'pie',
+      data: {
+        labels: Object.keys(dayData),
+        datasets: [{
+          data: Object.values(dayData),
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(54, 162, 235, 0.8)'
+          ]
+        }]
+      },
+      options: {
+        title: {
+          display: true,
+          text: 'Number of Positive and Negative Cases'
+        }
+      }
+    });
+  });
+};
+
+// Add event listeners to refresh button
+refreshButton.addEventListener('click', function() {
+  getDataAndDrawBarChart();
+  getDataAndDrawPieChart();
+});
+
+// Draw the initial charts on page load
+getDataAndDrawBarChart();
+getDataAndDrawPieChart();
+
+</script>
+</html>
